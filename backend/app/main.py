@@ -6,3 +6,4 @@ app = FastAPI(title="Reposage")
 def root():
     return {"message": "Reposage is alive!"}
 
+
