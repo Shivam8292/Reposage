@@ -15,8 +15,11 @@ class SearchRequest(BaseModel):
 
 @router.post("/index")
 def index_repo(request: RepoRequest):
-    result = index_repository(request.owner, request.repo)
-    return {"message": result}
+    try:
+        result = index_repository(request.owner, request.repo)
+        return {"message": result}
+    except Exception as e:
+        return {"error": str(e)}
 
 @router.post("/search")
 def search_repo(request: SearchRequest):

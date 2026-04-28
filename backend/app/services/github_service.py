@@ -23,10 +23,20 @@ def get_repo_tree(owner: str, repo: str) -> list:
     ]
     return files
 
-def get_file_content(owner: str, repo: str, path: str) -> str:
-    url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
-    response = requests.get(url, headers=HEADERS)
-    data = response.json()
-    
-    content = base64.b64decode(data["content"]).decode("utf-8")
-    return content
+def get_file_content(owner: str, repo: str, path: str) -> str | None:
+    try:
+        url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
+        response = requests.get(url, headers=HEADERS)
+        
+        if response.status_code != 200:
+            return None
+            
+        data = response.json()
+        
+        if data.get("encoding") != "base64":
+            return None
+            
+        content = base64.b64decode(data["content"]).decode("utf-8")
+        return content
+    except Exception:
+        return None
