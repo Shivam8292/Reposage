@@ -61,5 +61,15 @@ def search_code(owner: str, repo: str, query: str) -> list:
         embedding_function=embeddings
     )
     
-    results = vectorstore.similarity_search(query, k=5)
-    return results
+    results = vectorstore.similarity_search(query, k=10)
+    
+    # Deduplicate — same file_path ka sirf pehla chunk rakho
+    seen = set()
+    unique_results = []
+    for r in results:
+        fp = r.metadata["file_path"]
+        if fp not in seen:
+            seen.add(fp)
+            unique_results.append(r)
+    
+    return unique_results[:5]
