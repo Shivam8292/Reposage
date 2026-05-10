@@ -12,6 +12,8 @@ HEADERS = {
     "Accept": "application/vnd.github.v3+json"
 }
 
+ALLOWED_EXTENSIONS = {".py", ".js", ".jsx", ".ts", ".tsx", ".java", ".cpp", ".c", ".go", ".rs"}
+
 def get_repo_tree(owner: str, repo: str) -> list:
     url = f"https://api.github.com/repos/{owner}/{repo}/git/trees/HEAD?recursive=1"
     response = requests.get(url, headers=HEADERS)
@@ -19,7 +21,7 @@ def get_repo_tree(owner: str, repo: str) -> list:
     
     files = [
         item for item in data["tree"]
-        if item["type"] == "blob"
+        if item["type"] == "blob" and any(item["path"].endswith(ext) for ext in ALLOWED_EXTENSIONS)
     ]
     return files
 
