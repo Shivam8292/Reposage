@@ -4,6 +4,9 @@ from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from app.services.github_service import get_repo_tree, get_file_content
 import ast
+import shutil
+import gc
+
 
 CHUNK_SIZE = 50
 CHUNK_OVERLAP = 10
@@ -73,8 +76,16 @@ def chunk_file(path: str, content: str) -> list[Document]:
     
     return line_based_chunks(path, content)
 
+
 def index_repository(owner: str, repo: str) -> str:
+    persist_dir = f"./chromadb/{owner}_{repo}"
+    
+    if os.path.exists(persist_dir):
+        gc.collect()  # ChromaDB connections release karo
+        shutil.rmtree(persist_dir, ignore_errors=True)
+    
     files = get_repo_tree(owner, repo)
+
     
     all_chunks = []
     for file in files[:50]:  # pehle 50 files test ke liye
@@ -88,7 +99,7 @@ def index_repository(owner: str, repo: str) -> str:
     vectorstore = Chroma.from_documents(
         documents=all_chunks,
         embedding=embeddings,
-        persist_directory=f"./chromadb/{owner}_{repo}"
+        persist_directory=persist_dir
     )
     
     return f"Indexed {len(all_chunks)} chunks"
@@ -98,8 +109,21 @@ def search_code(owner: str, repo: str, query: str) -> list:
         persist_directory=f"./chromadb/{owner}_{repo}",
         embedding_function=embeddings
     )
-    
-    results = vectorstore.similarity_search(query, k=10)
-    
-    
-    return results[:5]
+
+    results = vectorstore.similarity_search_with_score(query, k=10)
+
+    vectorstore._client.close()  # connection close karo
+
+    seen = set()
+    unique_results = []
+
+    for doc, score in results:
+
+        if score > 1.5:   # irrelevant results cut karo
+            continue
+
+        if doc.page_content not in seen:
+            seen.add(doc.page_content)
+            unique_results.append(doc)
+
+    return unique_results[:5]

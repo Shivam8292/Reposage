@@ -23,6 +23,7 @@ def get_repo_tree(owner: str, repo: str) -> list:
         item for item in data["tree"]
         if item["type"] == "blob" and any(item["path"].endswith(ext) for ext in ALLOWED_EXTENSIONS)
     ]
+    print(f"Indexed files: {[f['path'] for f in files]}")
     return files
 
 def get_file_content(owner: str, repo: str, path: str) -> str | None:
