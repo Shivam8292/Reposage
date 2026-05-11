@@ -3,6 +3,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from app.services.github_service import get_repo_tree, get_file_content
+import ast
 
 CHUNK_SIZE = 50
 CHUNK_OVERLAP = 10
@@ -11,7 +12,36 @@ embeddings = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
 
-def chunk_file(path: str, content: str) -> list[Document]:
+def get_python_chunks(path: str, content: str) -> list[Document]:
+    try:
+        tree = ast.parse(content)
+    except SyntaxError:
+        return []
+    
+    lines = content.split("\n")
+    chunks = []
+    
+    for node in ast.iter_child_nodes(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            start = node.lineno - 1
+            end = node.end_lineno
+            chunk_text = "\n".join(lines[start:end])
+            
+            doc = Document(
+                page_content=chunk_text,
+                metadata={
+                    "file_path": path,
+                    "start_line": node.lineno,
+                    "end_line": node.end_lineno,
+                    "name": node.name
+                }
+            )
+            chunks.append(doc)
+    
+    return chunks
+
+
+def line_based_chunks(path: str, content: str) -> list[Document]:
     lines = content.split("\n")
     chunks = []
     
@@ -34,6 +64,14 @@ def chunk_file(path: str, content: str) -> list[Document]:
         i += CHUNK_SIZE - CHUNK_OVERLAP
     
     return chunks
+
+def chunk_file(path: str, content: str) -> list[Document]:
+    if path.endswith(".py"):
+        py_chunks = get_python_chunks(path, content)
+        if py_chunks:
+            return py_chunks
+    
+    return line_based_chunks(path, content)
 
 def index_repository(owner: str, repo: str) -> str:
     files = get_repo_tree(owner, repo)
@@ -63,13 +101,5 @@ def search_code(owner: str, repo: str, query: str) -> list:
     
     results = vectorstore.similarity_search(query, k=10)
     
-    # Deduplicate — same file_path ka sirf pehla chunk rakho
-    seen = set()
-    unique_results = []
-    for r in results:
-        fp = r.metadata["file_path"]
-        if fp not in seen:
-            seen.add(fp)
-            unique_results.append(r)
     
-    return unique_results[:5]
+    return results[:5]
