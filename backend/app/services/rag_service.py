@@ -110,20 +110,14 @@ def search_code(owner: str, repo: str, query: str) -> list:
         embedding_function=embeddings
     )
 
-    results = vectorstore.similarity_search_with_score(query, k=10)
-
-    vectorstore._client.close()  # connection close karo
+    results = vectorstore.similarity_search_with_score(query, k=5)
+    vectorstore._client.close()
 
     seen = set()
     unique_results = []
-
     for doc, score in results:
-
-        if score > 1.5:   # irrelevant results cut karo
-            continue
-
         if doc.page_content not in seen:
             seen.add(doc.page_content)
             unique_results.append(doc)
 
-    return unique_results[:5]
+    return unique_results[:3]
