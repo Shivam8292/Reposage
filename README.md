@@ -1,5 +1,7 @@
 # Reposage 🔍
 
+![Reposage Demo Preview](demo_mockup.png)
+
 > Navigate any GitHub codebase with natural language — find the exact file and line numbers you need, instantly.
 
 ## What is Reposage?
@@ -11,6 +13,7 @@ When you join a new team or get handed a large codebase, finding *where* to make
 - Result: `backend/main.py — Lines 58 to 71` → the exact `def register(...)` function
 
 No more grepping through files. No more reading code you don't care about.
+
 
 ---
 
@@ -40,11 +43,28 @@ No more grepping through files. No more reading code you don't care about.
 
 ## How It Works
 
-1. Enter a GitHub repo (owner + repo name) and click **Re-Index**
-2. Reposage fetches all source files via the GitHub API
-3. Python files are parsed with AST to extract exact function/class boundaries; other files use sliding window chunking
-4. Code chunks are embedded using a HuggingFace sentence transformer and stored in ChromaDB
-5. On search, your query is embedded and compared against stored chunks — top matches are returned with file path and line numbers
+### System Flow
+```mermaid
+graph TD
+    A[GitHub Repository] -->|Fetch Files via REST API| B(FastAPI Backend)
+    B -->|Check Allowed File Formats| C{Is Python file?}
+    C -->|Yes| D[AST Parse: Classes & Functions]
+    C -->|No| E[Sliding Window Chunking]
+    D --> F[Generate Document Chunks]
+    E --> F
+    F -->|HuggingFace Embeddings| G[Chroma Vector Database]
+    
+    H[User Search Query] -->|Similarity Search| I[Query Embeddings Matching]
+    G --> I
+    I -->|Top Code Snippets| J[React Frontend Dashboard]
+```
+
+### Steps
+1. Enter a GitHub repo (owner + repo name) and click **Index Repository**.
+2. Reposage fetches all source files via the GitHub API.
+3. Python files are parsed with AST to extract exact function/class boundaries; other files use sliding window chunking.
+4. Code chunks are embedded using a HuggingFace sentence transformer and stored in ChromaDB.
+5. On search, your query is embedded and compared against stored chunks — top matches are returned with file path, exact line numbers, and relevant code.
 
 ---
 
