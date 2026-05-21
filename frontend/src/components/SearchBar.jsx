@@ -1,4 +1,4 @@
-function SearchBar({ query, setQuery, onSearch, loading }) {
+function SearchBar({ query, setQuery, onSearch, loading, onClear, hasResults }) {
   
   const suggestions = [
     "Where is the main application entry point?",
@@ -60,6 +60,16 @@ function SearchBar({ query, setQuery, onSearch, loading }) {
             <span>Search</span>
           )}
         </button>
+
+        {hasResults && (
+          <button 
+            className="btn btn-secondary" 
+            onClick={onClear} 
+            disabled={loading}
+          >
+            New Search
+          </button>
+        )}
       </div>
 
       {/* Suggestion Chips */}

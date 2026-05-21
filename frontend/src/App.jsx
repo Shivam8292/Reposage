@@ -31,6 +31,14 @@ function App() {
     setLogs([])
   }
 
+  // Clear search results and query
+  function handleClearSearch() {
+    setQuery("")
+    setResults([])
+    setError("")
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
   // Handle repository indexing
   async function handleIndex() {
     if (!owner.trim() || !repo.trim()) {
@@ -166,6 +174,8 @@ function App() {
             setQuery={setQuery} 
             onSearch={handleSearch} 
             loading={loading} 
+            onClear={handleClearSearch}
+            hasResults={results.length > 0}
           />
 
           <div style={{ marginTop: "1rem" }}>
@@ -185,6 +195,17 @@ function App() {
               )
             )}
           </div>
+
+          {results.length > 0 && (
+            <div style={{ display: "flex", justifyContent: "center", marginTop: "2rem", marginBottom: "3.5rem", animation: "fadeIn 0.5s ease" }}>
+              <button className="btn btn-secondary" onClick={handleClearSearch}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: "0.5rem" }}>
+                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+                </svg>
+                New Search
+              </button>
+            </div>
+          )}
         </>
       ) : (
         <RepoInput
