@@ -454,25 +454,62 @@ h1.logo-title span {
   line-height: 1.6;
   overflow-x: auto;
   position: relative;
+  background: var(--code-bg);
+  padding: 0.75rem 0;
 }
 
-.line-numbers {
-  padding: 1rem 0.75rem 1rem 1.25rem;
+.code-lines-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-width: max-content;
+  width: 100%;
+}
+
+.code-line-row {
+  display: flex;
+  width: 100%;
+  transition: background-color var(--transition-fast);
+}
+
+.code-line-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.line-number-cell {
+  padding: 0.1rem 0.75rem 0.1rem 1.25rem;
   background: rgba(10, 14, 23, 0.3);
   border-right: 1px solid rgba(255, 255, 255, 0.03);
   color: var(--text-muted);
   text-align: right;
   user-select: none;
   min-width: 3.5rem;
+  display: inline-block;
 }
 
-.code-content {
-  padding: 1rem 1.25rem;
-  margin: 0;
-  flex: 1;
+.code-content-cell {
+  padding: 0.1rem 1.25rem;
   color: #e2e8f0;
-  text-align: left;
   white-space: pre;
+  flex: 1;
+  text-align: left;
+}
+
+/* Highlighted Line Styles */
+.code-line-row.highlighted-line {
+  background: rgba(139, 92, 246, 0.18); /* Sleek primary purple tint */
+  border-left: 3px solid var(--primary); /* Left indicator border */
+}
+
+.code-line-row.highlighted-line .line-number-cell {
+  color: var(--primary);
+  font-weight: 600;
+  padding-left: calc(1.25rem - 3px); /* Offset padding to prevent visual layout shifts */
+  background: rgba(139, 92, 246, 0.08);
+}
+
+.code-line-row.highlighted-line .code-content-cell {
+  color: #ffffff;
+  font-weight: 500;
 }
 
 /* Spinner */

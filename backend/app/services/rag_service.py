@@ -24,10 +24,18 @@ def get_python_chunks(path: str, content: str) -> list[Document]:
     lines = content.split("\n")
     chunks = []
     
+    # Track lines belonging to functions or classes
+    function_lines = set()
+    
     for node in ast.iter_child_nodes(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             start = node.lineno - 1
-            end = node.end_lineno
+            end = getattr(node, "end_lineno", node.lineno)
+            
+            # Track these lines as part of a function/class
+            for l in range(start, end):
+                function_lines.add(l)
+                
             chunk_text = "\n".join(lines[start:end])
             
             doc = Document(
@@ -35,11 +43,37 @@ def get_python_chunks(path: str, content: str) -> list[Document]:
                 metadata={
                     "file_path": path,
                     "start_line": node.lineno,
-                    "end_line": node.end_lineno,
+                    "end_line": end,
                     "name": node.name
                 }
             )
             chunks.append(doc)
+            
+    # Extract global/module-level scope lines (configs, variables, imports)
+    total_lines = len(lines)
+    global_lines_list = [i for i in range(total_lines) if i not in function_lines]
+    
+    # Group consecutive global lines together
+    from itertools import groupby
+    from operator import itemgetter
+    
+    for k, g in groupby(enumerate(global_lines_list), lambda ix: ix[0] - ix[1]):
+        group = list(map(itemgetter(1), g))
+        if len(group) > 0:
+            chunk_lines = [lines[idx] for idx in group]
+            # Strip empty lines from chunk start/end
+            chunk_text = "\n".join(chunk_lines).strip()
+            if chunk_text:
+                doc = Document(
+                    page_content=chunk_text,
+                    metadata={
+                        "file_path": path,
+                        "start_line": group[0] + 1,
+                        "end_line": group[-1] + 1,
+                        "name": "global_scope"
+                    }
+                )
+                chunks.append(doc)
     
     return chunks
 
@@ -110,14 +144,47 @@ def search_code(owner: str, repo: str, query: str) -> list:
         embedding_function=embeddings
     )
 
-    results = vectorstore.similarity_search_with_score(query, k=5)
+    # Fetch a wider pool of results to perform reciprocal re-ranking
+    results = vectorstore.similarity_search_with_score(query, k=15)
     vectorstore._client.close()
+
+    # Tokenize the query for strict keyword matching overlap
+    query_words = set(query.lower().split())
+    stop_words = {"where", "is", "the", "a", "an", "and", "or", "in", "on", "at", "to", "for", "with", "of", "route", "endpoint", "method"}
+    important_query_words = {w for w in query_words if w not in stop_words and len(w) > 1}
+    
+    hybrid_results = []
+    for doc, distance in results:
+        content_lower = doc.page_content.lower()
+        file_path_lower = doc.metadata.get("file_path", "").lower()
+        
+        # Calculate term overlap match score
+        matched_words = 0
+        if important_query_words:
+            for word in important_query_words:
+                if word in content_lower or word in file_path_lower:
+                    matched_words += 1
+            keyword_score = matched_words / len(important_query_words)
+        else:
+            keyword_score = 0
+            
+        # Convert Chroma distance to similarity (0 distance = 1.0 similarity)
+        vector_sim = 1.0 / (1.0 + distance)
+        
+        # Combined score: 60% keyword match overlap, 40% semantic vector match
+        hybrid_score = 0.4 * vector_sim + 0.6 * keyword_score
+        
+        hybrid_results.append((doc, hybrid_score))
+        
+    # Re-rank results by combined hybrid score
+    hybrid_results.sort(key=lambda x: x[1], reverse=True)
 
     seen = set()
     unique_results = []
-    for doc, score in results:
-        if doc.page_content not in seen:
-            seen.add(doc.page_content)
+    for doc, score in hybrid_results:
+        cleaned_content = doc.page_content.strip()
+        if cleaned_content not in seen:
+            seen.add(cleaned_content)
             unique_results.append(doc)
 
     return unique_results[:3]

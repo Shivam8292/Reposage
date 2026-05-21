@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-function ResultCard({ result, owner, repo }) {
+function ResultCard({ result, owner, repo, query }) {
   const [copied, setCopied] = useState(false);
 
   // Copy code to clipboard
@@ -15,6 +15,31 @@ function ResultCard({ result, owner, repo }) {
 
   // Split code content to render line numbers dynamically
   const codeLines = result.content.split("\n");
+
+  // Determine if a specific line matches query keywords
+  const shouldHighlightLine = (line, searchQuery) => {
+    if (!searchQuery) return false;
+
+    // Tokenize query words
+    const queryWords = searchQuery.toLowerCase().split(/\s+/);
+    const stopWords = new Set(["where", "is", "the", "a", "an", "and", "or", "in", "on", "at", "to", "for", "with", "of", "route", "endpoint", "method"]);
+    const importantWords = queryWords.filter(w => !stopWords.has(w) && w.length > 1);
+
+    if (importantWords.length === 0) return false;
+
+    const lineLower = line.toLowerCase();
+
+    return importantWords.some(word => {
+      // If word contains special characters (like @, /, ., (, etc.), use substring match
+      if (/[^a-z0-9_]/i.test(word)) {
+        return lineLower.includes(word);
+      } else {
+        // Use word boundary to avoid false positives (e.g., matching 'app' in 'mapping')
+        const regex = new RegExp(`\\b${word}\\b`, 'i');
+        return regex.test(line);
+      }
+    });
+  };
 
   return (
     <div className="result-card">
@@ -55,17 +80,18 @@ function ResultCard({ result, owner, repo }) {
       </div>
 
       <div className="code-container">
-        {/* Dynamic line numbers */}
-        <div className="line-numbers">
-          {codeLines.map((_, i) => (
-            <div key={i}>{result.start_line + i}</div>
-          ))}
+        <div className="code-lines-wrapper">
+          {codeLines.map((line, i) => {
+            const lineNum = result.start_line + i;
+            const isHighlighted = shouldHighlightLine(line, query);
+            return (
+              <div key={i} className={`code-line-row ${isHighlighted ? "highlighted-line" : ""}`}>
+                <span className="line-number-cell">{lineNum}</span>
+                <span className="code-content-cell">{line || " "}</span>
+              </div>
+            );
+          })}
         </div>
-
-        {/* Code body */}
-        <pre className="code-content">
-          <code>{result.content}</code>
-        </pre>
       </div>
     </div>
   );

@@ -181,7 +181,7 @@ function App() {
           <div style={{ marginTop: "1rem" }}>
             {results.length > 0 ? (
               results.map((r, i) => (
-                <ResultCard key={i} result={r} owner={owner} repo={repo} />
+                <ResultCard key={i} result={r} owner={owner} repo={repo} query={query} />
               ))
             ) : (
               !loading && query && (
